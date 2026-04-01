@@ -1,5 +1,7 @@
 name: Docker Image Vulnerability Analysis
 
+run-name: Image Group F${{ inputs.group_f }}
+
 on:
   # 수동으로 실행하며 그룹 번호(F)를 입력받음
   workflow_dispatch:
