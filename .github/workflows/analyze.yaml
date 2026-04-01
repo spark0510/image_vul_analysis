@@ -49,11 +49,16 @@ jobs:
           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
       - name: Configure rclone
+        env:
+          # Secret 이름을 그대로 환경변수에 할당 (Plain Text 상태여야 함)
+          RCLONE_CONF_RAW: ${{ secrets.RCLONE_CONF }}
         run: |
           sudo curl https://rclone.org/install.sh | sudo bash
           mkdir -p ~/.config/rclone
-          # Secret에 저장된 rclone.conf 내용을 그대로 파일로 만듭니다.
-          echo "${{ secrets.RCLONE_CONF }}" | base64 -d > ~/.config/rclone/rclone.conf
+          # 환경 변수를 사용하여 파일 생성 (로그에 값 자체가 남지 않음)
+          cat << 'EOF' > ~/.config/rclone/rclone.conf
+          $RCLONE_CONFIG_BODY
+          EOF
           chmod 600 ~/.config/rclone/rclone.conf
 
       - name: Download Scripts from Google Drive
