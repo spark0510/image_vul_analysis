@@ -1,0 +1,100 @@
+name: Docker Image Vulnerability Analysis
+
+on:
+  # 수동으로 실행하며 그룹 번호(F)를 입력받음
+  workflow_dispatch:
+    inputs:
+      group_f:
+        description: '분석할 그룹 번호(F)를 입력하세요'
+        required: true
+        default: '1'
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Python Dependencies
+        run: |
+          pip install pandas requests
+
+      - name: Install Analysis Tools (Grype, Trivy, Syft, OSV, Scout)
+        run: |
+          # Grype
+          curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin
+          # Trivy
+          sudo apt-get install -y wget gnupg
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update && sudo apt-get install -y trivy
+          # Syft
+          curl -sSfL https://get.anchore.io/syft | sudo sh -s -- -b /usr/local/bin
+          # OSV Scanner
+          curl -L https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 -o osv-scanner
+          chmod +x osv-scanner && sudo mv osv-scanner /usr/local/bin/
+          # Docker Scout
+          mkdir -p ~/.docker/cli-plugins
+          curl -sSfL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh | sh -s -- -b ~/.docker/cli-plugins
+          chmod +x ~/.docker/cli-plugins/docker-scout
+
+      - name: Docker Login
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login --username "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Configure rclone
+        run: |
+          sudo curl https://rclone.org/install.sh | sudo bash
+          mkdir -p ~/.config/rclone
+          # Secret에 저장된 rclone.conf 내용을 그대로 파일로 만듭니다.
+          echo "${{ secrets.RCLONE_CONF }}" > ~/.config/rclone/rclone.conf
+          chmod 600 ~/.config/rclone/rclone.conf
+
+      - name: Download Scripts from Google Drive
+        run: |
+          TARGET_FILES=(
+            "cleanup_files.py" "docker_delete.py" "docker_inspect.py"
+            "docker_pull.py" "docker_size.py" "parse_grype.py" "parse_trivy.py"
+            "parse_inspect.py" "parse_osv.py" "parse_scout.py" "run_grype.py"
+            "run_scout.py" "run_trivy.py" "run_osv.py" "start_git.sh"
+            "git_clone_files.sh" "tvymaster.tar.gz"
+          )
+          for FILE in "${TARGET_FILES[@]}"; do
+            echo "Downloading: $FILE"
+            rclone copy "my_gdrive:_docker/$FILE" "./"
+            [ -f "./$FILE" ] && chmod +x "./$FILE" || echo "⚠️ $FILE download failed"
+          done
+
+      - name: Extract tvymaster
+        run: |
+          mkdir -p tvy1
+          if [ -f "tvymaster.tar.gz" ]; then
+            tar -xzf tvymaster.tar.gz -C "./tvy1" --strip-components=1
+            rm -f tvymaster.tar.gz
+          fi
+
+      - name: Get Docker Hub Token & Run Analysis
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          # 입력받은 그룹 번호를 환경 변수로 설정
+          F_VALUE: ${{ github.event.inputs.group_f }}
+        run: |
+          # API 토큰 획득
+          export API_TOKEN2=$(curl -s -X POST "https://hub.docker.com/v2/users/login/" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\": \"${DOCKER_USERNAME}\", \"password\": \"${DOCKER_PASSWORD}\"}" \
+            | jq -r .token)
+          
+          echo "🚀 분석 시작 (Group F: $F_VALUE)"
+          
+          # 주의: nohup & 대신 직접 실행해야 Actions가 완료될 때까지 기다립니다.
+          # 만약 내부 스크립트가 무한 루프라면 타임아웃을 고려해야 합니다.
+          chmod +x single_clone_files.sh
+          ./single_clone_files.sh "$F_VALUE"
