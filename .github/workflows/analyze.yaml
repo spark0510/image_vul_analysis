@@ -55,11 +55,16 @@ jobs:
         run: |
           sudo curl https://rclone.org/install.sh | sudo bash
           mkdir -p ~/.config/rclone
-          # 환경 변수를 사용하여 파일 생성 (로그에 값 자체가 남지 않음)
-          cat << 'EOF' > ~/.config/rclone/rclone.conf
-          $RCLONE_CONFIG_BODY
-          EOF
+          
+          # 환경 변수 값을 파일로 직접 씁니다. 
+          # printf를 쓰면 특수문자나 줄바꿈이 깨지지 않고 그대로 전달됩니다.
+          printf "%s\n" "$RCLONE_CONF_VALUE" > ~/.config/rclone/rclone.conf
+          
           chmod 600 ~/.config/rclone/rclone.conf
+          echo "✅ rclone config created successfully"
+          
+          # (선택사항) 설정 확인용 - 민감정보는 ***로 자동 마스킹됩니다.
+          rclone config show my_gdrive:
 
       - name: Download Scripts from Google Drive
         run: |
