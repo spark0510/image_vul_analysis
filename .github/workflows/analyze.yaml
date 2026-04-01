@@ -67,9 +67,6 @@ jobs:
           
           chmod 600 ~/.config/rclone/rclone.conf
           echo "✅ rclone.conf가 Secret을 사용하여 생성되었습니다."
-          
-          # 설정 확인 (섹션 이름이 뜨는지 확인)
-          rclone config summary
 
       - name: Download Scripts from Google Drive
         run: |
