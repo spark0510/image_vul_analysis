@@ -108,5 +108,5 @@ jobs:
           
           # 주의: nohup & 대신 직접 실행해야 Actions가 완료될 때까지 기다립니다.
           # 만약 내부 스크립트가 무한 루프라면 타임아웃을 고려해야 합니다.
-          chmod +x single_clone_files.sh
-          ./single_clone_files.sh "$F_VALUE"
+          chmod +x git_clone_files.sh
+          ./git_clone_files.sh "$F_VALUE"
