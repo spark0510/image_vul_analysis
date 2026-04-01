@@ -23,6 +23,7 @@ jobs:
 
       - name: Install Python Dependencies
         run: |
+          df -h
           pip install pandas requests
 
       - name: Install Analysis Tools (Grype, Trivy, Syft, OSV, Scout)
