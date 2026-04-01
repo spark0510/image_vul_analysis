@@ -50,21 +50,26 @@ jobs:
 
       - name: Configure rclone
         env:
-          # Secret 이름을 그대로 환경변수에 할당 (Plain Text 상태여야 함)
-          RCLONE_CONF_RAW: ${{ secrets.RCLONE_CONF }}
+          ACCESS_TOKEN: ${{ secrets.GDRIVE_ACCESS_TOKEN }}
+          REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
         run: |
           sudo curl https://rclone.org/install.sh | sudo bash
           mkdir -p ~/.config/rclone
           
-          # 환경 변수 값을 파일로 직접 씁니다. 
-          # printf를 쓰면 특수문자나 줄바꿈이 깨지지 않고 그대로 전달됩니다.
-          printf "%s\n" "$RCLONE_CONF_VALUE" > ~/.config/rclone/rclone.conf
+          # rclone.conf 템플릿에 Secret 주입
+          # 주의: 아래 EOF에는 따옴표를 붙이지 않아야 변수가 치환됩니다.
+          cat << EOF > ~/.config/rclone/rclone.conf
+          [my_gdrive]
+          type = drive
+          scope = drive
+          token = {"access_token":"$ACCESS_TOKEN","token_type":"Bearer","refresh_token":"$REFRESH_TOKEN","expiry":"2026-03-26T09:24:45.0309538+09:00"}
+          EOF
           
           chmod 600 ~/.config/rclone/rclone.conf
-          echo "✅ rclone config created successfully"
+          echo "✅ rclone.conf가 Secret을 사용하여 생성되었습니다."
           
-          # (선택사항) 설정 확인용 - 민감정보는 ***로 자동 마스킹됩니다.
-          rclone config show my_gdrive:
+          # 설정 확인 (섹션 이름이 뜨는지 확인)
+          rclone config summary
 
       - name: Download Scripts from Google Drive
         run: |
