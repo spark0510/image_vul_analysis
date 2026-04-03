@@ -23,12 +23,21 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - id: set-matrix
+        shell: python
         run: |
-          START=${{ github.event.inputs.start_f }}
-          END=${{ github.event.inputs.end_f }}
-          # seq를 이용해 [1, 2, 3...] 형태의 JSON 배열 생성
-          JSON_ARRAY=$(seq -s, $START $END | jq -R 'split(",") | map(tonumber)')
-          echo "matrix=$JSON_ARRAY" >> $GITHUB_OUTPUT
+          import json
+          import os
+
+          # 입력값 가져오기
+          start = int("${{ github.event.inputs.start_f }}")
+          end = int("${{ github.event.inputs.end_f }}")
+
+          # 숫자 배열 생성 [1, 2, 3, ..., 60]
+          matrix_range = list(range(start, end + 1))
+          
+          # GitHub Output에 저장
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"matrix={json.dumps(matrix_range)}\n")
 
   # [2] 실제 분석 작업 (각 번호마다 개별 Job 생성)
   analyze:
