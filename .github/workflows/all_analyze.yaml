@@ -1,4 +1,4 @@
-name: Docker Image Vulnerability Analysis
+name: All at once Docker Image Vulnerability Analysis
 
 # 실행 목록에 표시될 이름 (예: Image Group F1 to F20)
 run-name: Image Group F${{ inputs.start_f }} to F${{ inputs.end_f }}
